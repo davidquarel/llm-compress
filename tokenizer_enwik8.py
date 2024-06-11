@@ -20,15 +20,8 @@ full_text = ''.join(dataset['text'])
 print("Tokenizing the text...")
 tokenized_text = tokenizer(full_text, return_tensors='pt')['input_ids'][0]
 
-# Chunk the tokenized text into segments of size 1023
-chunk_size = 1023
-chunks = [tokenized_text[i:i + chunk_size] for i in tqdm(range(0, len(tokenized_text), chunk_size))]
-
-# Prepend each chunk with the <bos> token
-bos_token_id = tokenizer.bos_token_id
-chunks = [torch.cat((torch.tensor([bos_token_id]), chunk), dim=0) for chunk in chunks if len(chunk) == chunk_size]
 
 # Save the chunks to a file
-output_file = 'tokenized_enwik8.pt'
-torch.save(chunks, output_file)
+output_file = 'tokens_enwik8_raw.pt'
+torch.save(tokenized_text, output_file)
 print(f"Tokenized chunks saved to {output_file}")
