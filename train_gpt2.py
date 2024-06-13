@@ -1,4 +1,4 @@
-# %%
+w# %%
 import torch
 from transformers import GPT2LMHeadModel, GPT2Tokenizer, AdamW
 from torch.utils.data import DataLoader
@@ -43,7 +43,7 @@ batch_size = 4  # Adjust this value as needed
 train_dataloader = DataLoader(input_ids, batch_size=batch_size, shuffle=True)
 
 # Define optimizer
-learning_rate = 1e-3  # High learning rate for overfitting
+learning_rate = 5e-5  # High learning rate for overfitting
 optimizer = AdamW(model.parameters(), lr=learning_rate)
 # %%
 # Function to train one epoch
