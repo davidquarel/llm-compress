@@ -5,6 +5,9 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 import wandb
 import os
+#===
+import utils
+
 
 # Initialize wandb
 wandb.init(project="gpt2-enwik8-finetuning")
@@ -21,21 +24,7 @@ input_file = './tokens_enwik8_raw.pt'
 chunks = torch.load(input_file)
 print(f"Loaded tokenized chunks from {input_file}")
 
-def sliding_windows(tensor, window_size, step_size):
-    # Calculate the shape of the resulting tensor
-    num_windows = (tensor.size(0) - window_size) // step_size + 1
-    # Calculate the strides
-    stride = tensor.stride(0)
-    new_stride = (step_size * stride, stride)
-    # Use as_strided to create the sliding windows
-    windows = torch.as_strided(tensor, size=(num_windows, window_size), stride=new_stride)
-    return windows
-
-window_size = model.config.n_ctx - 1
-stride = (model.config.n_ctx // 2) - 1
-batched = sliding_windows(chunks, window_size, stride)
-bos_tokens = torch.tensor([tokenizer.bos_token_id] * batched.size(0)).unsqueeze(1)
-input_ids = torch.cat([bos_tokens, batched], dim=1).to(device)
+input_ids = utils.preprocess_tokens(chunks, model, tokenizer).to(device)
 
 # %%
 # Create DataLoader
@@ -58,7 +47,7 @@ def train_one_epoch(model, dataloader, optimizer, device):
         target_tokens = input_ids[:, context_size:]
         optimizer.zero_grad()
         logits = model(input_ids).logits
-        logits = logits[:, context_size-1:-1].reshape(batch_size * context_size, -1)
+        logits = logits[:, context_size-1:-1].reshape(input_ids.shape[0] * context_size, -1)
         loss_fct = torch.nn.CrossEntropyLoss()
         loss = loss_fct(logits, target_tokens.flatten())
         
@@ -75,18 +64,13 @@ def train_one_epoch(model, dataloader, optimizer, device):
     return avg_loss
 # %%
 # Function to find the latest checkpoint in the directory
-def find_latest_checkpoint(base_path):
-    checkpoints = [path for path in os.listdir(base_path) if "epoch-" in path]
-    if not checkpoints:
-        return None
-    latest_checkpoint = max(checkpoints, key=lambda x: int(x.split('-')[-1]))
-    return os.path.join(base_path, latest_checkpoint)
+
 
 # Base directory where the checkpoints are saved
 base_checkpoint_dir = "./gptv2"
 
 # Check for the latest checkpoint
-latest_checkpoint = find_latest_checkpoint(base_checkpoint_dir)
+latest_checkpoint = utils.find_latest_checkpoint(base_checkpoint_dir)
 
 # Load the model and tokenizer from the latest checkpoint if exists
 if latest_checkpoint:
